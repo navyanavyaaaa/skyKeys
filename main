@@ -1,0 +1,94 @@
+// Sensor 1 (note selection)
+const int trigPin1 = 2;
+const int echoPin1 = 3;
+
+// Sensor 2 (octave control)
+const int trigPin2 = 4;
+const int echoPin2 = 5;
+
+// Buzzer pin
+const int buzzerPin = 9;
+
+// Frequencies: two octaves
+int notesLow[] = {
+  1047, // C6
+  1175, // D6
+  1319, // E6
+  1397, // F6
+  1568, // G6
+  1760, // A6
+  1976  // B6
+};
+
+int notesHigh[] = {
+  2093, // C7
+  2349, // D7
+  2637, // E7
+  2794, // F7
+  3136, // G7
+  3520, // A7
+  3951  // B7
+};
+
+int currentNote = -1;
+
+void setup() {
+  pinMode(trigPin1, OUTPUT);
+  pinMode(echoPin1, INPUT);
+  pinMode(trigPin2, OUTPUT);
+  pinMode(echoPin2, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  Serial.begin(9600);
+}
+
+long getDistance(int trigPin, int echoPin) {
+  delay(50);  // Prevent sensor interference
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH, 30000);
+  long distance = duration * 0.034 / 2;
+  return constrain(distance, 0, 100);
+}
+
+int getNoteIndex(long distance) {
+  if (distance >= 2 && distance < 7) return 0;   // C
+  if (distance >= 8 && distance < 13) return 1;  // D
+  if (distance >= 14 && distance < 19) return 2;  // E
+  if (distance >= 20 && distance < 25) return 3;  // F
+  if (distance >= 26 && distance < 31) return 4;  // G
+  if (distance >= 32 && distance < 37) return 5;  // A
+  if (distance >= 38 && distance <= 43) return 6; // B
+  return -1; // Out of range
+}
+
+void loop() {
+
+  long noteDistance = getDistance(trigPin1, echoPin1);
+  long octaveDistance = getDistance(trigPin2, echoPin2);
+
+  int noteIndex = getNoteIndex(noteDistance);
+
+  if (noteIndex == -1) {
+    noTone(buzzerPin);
+    currentNote = -1;
+    return;
+  }
+
+  // Octave switching
+  bool useHighOctave = (octaveDistance > 20);
+  int frequency = useHighOctave ? notesHigh[noteIndex] : notesLow[noteIndex];
+
+  if (noteIndex != currentNote) {
+    currentNote = noteIndex;
+
+    Serial.print("Note: "); Serial.print(noteIndex);
+    Serial.print(" | Octave: "); Serial.print(useHighOctave ? "7" : "6");
+    Serial.print(" | Frequency: "); Serial.println(frequency);
+
+    tone(buzzerPin, frequency);
+    delay(200);}
+  
+}
